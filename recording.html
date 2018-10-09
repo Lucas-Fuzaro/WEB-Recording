@@ -1,0 +1,155 @@
+<script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<title>WEB - Recording</title>
+
+
+<div class="recording-container">
+  <i id="config" class="material-icons right">settings</i>
+  <div class="container">
+    <div class="row center">
+      <div class="card">
+        <video style="padding: 30px 0px 0px 0px;"></video>
+        <div class="card-content">
+          <div id="timer" style="font-size: 18px; color: red; display: none;"><span id="time">00</span> segundos
+            restantes!</div>
+          <a id="start-recording" class="btn-floating btn-large waves-effect waves-light red"><i class="material-icons">adjust</i></a>
+          <div id="done" style="font-size: 18px; color: green; display: none;">Video Finalizado e Enviado!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+  var recorder
+  var oneMinute = 15
+
+
+  // Getting video
+  var video = document.querySelector('video');
+
+  // Starting Video
+  navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then((camera) => {
+    video.srcObject = camera
+    video.play();
+  })
+
+  // Click function = CONFIG
+  document.getElementById("config").onclick = () => {
+    window.location.href = "/setup";
+  }
+
+  // Click function = Start Recording
+  document.getElementById('start-recording').onclick = () => {
+    captureCamera(function (camera) {
+      setSrcObject(camera, video);
+      video.play();
+      recorder = RecordRTC(camera, { type: 'video' });
+      recorder.startRecording()
+      recorder.camera = camera;
+      display = document.querySelector('#time');
+      startTimer(oneMinute, display);
+      document.getElementById('start-recording').style.display = 'none';
+      document.getElementById('timer').style.display = 'block';
+
+    });
+  };
+
+  // Event function = 60 seconds timer
+
+  function startTimer(duration, display) {
+    var timer = duration, minutes, seconds;
+    var tic = setInterval(function () {
+      minutes = parseInt(timer / 60, 10)
+      seconds = parseInt(timer % 60, 10);
+
+      minutes = minutes < 10 ? "0" + minutes : minutes;
+      seconds = seconds < 10 ? "0" + seconds : seconds;
+
+      display.textContent = seconds;
+      console.log(timer)
+      if (timer == 0) {
+        recorder.stopRecording(stopRecordingCallback);
+        clearInterval(tic);
+      }
+      if (--timer < 0) {
+        timer = duration;
+      }
+    }, 1000);
+
+  }
+
+  captureCamera = (callback) => {
+    navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then((camera) => {
+      callback(camera);
+    }).catch((error) => {
+      alert('Nao foi possivel detectar a camera. Favor checar suas configurações e permissões.');
+      console.error(error);
+    });
+  }
+
+  stopRecordingCallback = () => {
+    const snapshot = document.createElement("canvas");
+    snapshot.style.display = 'none';
+    var test = snapshot.getContext('2d').drawImage(video, 0, 0, 1920, 1080);
+    var img = snapshot.toDataURL('image/jpeg')
+    const btnSnap = document.createElement("a");
+    btnSnap.style.display = 'none';
+    btnSnap.href = img
+    btnSnap.download = "selfie.png"
+    document.body.appendChild(btnSnap);
+    btnSnap.click()
+    btnSnap.remove()
+    video.src = video.srcObject = null;
+    video.src = downloadUrl = URL.createObjectURL(recorder.getBlob());
+
+    document.getElementById('timer').style.display = 'none';
+    document.getElementById('done').style.display = 'block';
+
+    const link = document.createElement("a");
+    link.style.display = "none";
+    link.href = downloadUrl;
+    link.download = "media.webm";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    video.play();
+    recorder.camera.stop();
+    recorder.destroy();
+    recorder = null;
+  }
+
+
+
+
+
+</script>
+
+<style>
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    width: 100%;
+  }
+
+  #config {
+    font-size: 40px;
+    font-weight: bolder;
+    color: black;
+  }
+
+  #config:hover {
+    color: grey;
+    cursor: pointer;
+  }
+</style>
